@@ -2,6 +2,16 @@ const userService = require("../services/user.service")
 const AppError = require("../errors/AppError")
 
 class UserController {
+
+    async login(req, res, next) {
+        try {
+            const result = await userService.login(req.body)
+
+            return res.status(200).json(result)
+        } catch (error) {
+            next(error)
+        }
+    }
     async create(req, res, next) {
         try {
             const user = await userService.create(req.body)

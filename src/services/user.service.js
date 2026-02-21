@@ -1,6 +1,10 @@
 const userRepository = require("../repositories/user.repository")
 const { hashPassword } = require("../utils/hash")
+const { comparePassword } = require("../utils/hash")
 const { validateUser } = require("../schemas/user.schema")
+const jwt = require("jsonwebtoken")
+const AppError = require("../errors/AppError")
+const config = require("../config/env")
 
 class UserService {
     async create(data) {
@@ -49,6 +53,34 @@ class UserService {
 
     async delete(id) {
         await userRepository.delete(id)
+    }
+
+    async login({ email, password }) {
+        if (!email || !password) {
+            throw new AppError("Email e senha são obrigatórios", 400)
+        }
+
+        const user = await userRepository.findByEmail(email)
+
+        if (!user) {
+            throw new AppError("Credenciais inválidas", 401)
+        }
+
+        const passwordMatch = await comparePassword(password, user.password)
+
+        if (!passwordMatch) {
+            throw new AppError("Credenciais inválidas", 401)
+        }
+
+        const token = jwt.sign(
+            { userId: user.id },
+            config.jwt.secret,
+            { expiresIn: config.jwt.expiresIn }
+        )
+
+        return {
+            token,
+        }
     }
 }
 

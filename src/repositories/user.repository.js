@@ -58,23 +58,24 @@ class UserRepository {
 
 
     async findByEmail(email) {
-
-        try {
-            const response = await elasticClient.search({
-                index: INDEX,
-                query: {
-                    term: { email: email },
+        const response = await elasticClient.search({
+            index: INDEX,
+            query: {
+                match: {
+                    email: email,
                 },
-            })
+            },
+        })
 
-            return response.hits.hits[0]
+        if (!response.hits.hits.length) {
+            return null
+        }
 
-        } catch (error) {
-            if (error.meta?.statusCode === 404) {
-                return null
-            }
+        const hit = response.hits.hits[0]
 
-            throw error
+        return {
+            id: hit._id,
+            ...hit._source,
         }
     }
 
