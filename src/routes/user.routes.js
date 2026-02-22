@@ -5,7 +5,7 @@ const authMiddleware = require("../middlewares/auth.middleware")
 
 router.post("/login", userController.login)
 
-router.post("/", authMiddleware, userController.create)
+router.post("/", userController.create)
 router.get("/", authMiddleware, userController.listAll)
 router.get("/:id", authMiddleware, userController.getById)
 router.put("/:id", authMiddleware, userController.update)

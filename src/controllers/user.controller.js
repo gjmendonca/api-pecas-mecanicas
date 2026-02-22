@@ -14,12 +14,18 @@ class UserController {
     }
     async create(req, res, next) {
         try {
-            const user = await userService.create(req.body)
+            const result = await userService.create(req.body)
+
+            const isArray = Array.isArray(result)
 
             return res.status(201).json({
-                message: "Usuário criado com sucesso",
-                data: user,
+                success: true,
+                message: isArray
+                    ? `${result.length} usuário(s) criado(s) com sucesso`
+                    : "Usuário criado com sucesso",
+                data: result,
             })
+
         } catch (error) {
             next(error)
         }
@@ -27,11 +33,17 @@ class UserController {
 
     async listAll(req, res, next) {
         try {
-            const users = await userService.list()
+
+            const page = parseInt(req.query.page) || 1
+            const limit = parseInt(req.query.limit) || 10
+
+            const users = await userService.list(null, page, limit)
 
             return res.status(200).json({
-                data: users,
+                data: users.data,
+                pagination: users.pagination
             })
+
         } catch (error) {
             next(error)
         }

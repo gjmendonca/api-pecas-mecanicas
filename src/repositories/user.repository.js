@@ -12,7 +12,7 @@ class UserRepository {
             const response = await elasticClient.index({
                 index: INDEX,
                 document: user,
-                refresh: true,
+                refresh: false,
             })
 
             return {
@@ -44,16 +44,43 @@ class UserRepository {
         }
     }
 
-    async findAll() {
+    async findAll(page = 1, limit = 10) {
+
+        const MAX_LIMIT = 1000
+
+        page = page < 1 ? 1 : page
+        limit = limit < 1 ? 10 : limit
+
+        if (limit > MAX_LIMIT) {
+            limit = MAX_LIMIT
+        }
+
+        const from = (page - 1) * limit
+
         const response = await elasticClient.search({
             index: INDEX,
-            query: { match_all: {} },
+            from,
+            size: limit,
+            query: { match_all: {} }
         })
 
-        return response.hits.hits.map(hit => ({
+        const total = response.hits.total.value
+
+        const data = response.hits.hits.map(hit => ({
             id: hit._id,
             ...hit._source,
         }))
+
+        return {
+            data,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasNext: page * limit < total
+            }
+        }
     }
 
 
@@ -80,13 +107,31 @@ class UserRepository {
     }
 
     async update(id, data) {
+        if (!data || Object.keys(data).length === 0) {
+            throw new AppError("Nenhum dado informado para atualização", 400)
+        }
+
         try {
             await elasticClient.update({
                 index: INDEX,
                 id,
-                doc: data,
+                script: {
+                    source: `
+                    for (String key : params.data.keySet()) {
+                        ctx._source[key] = params.data[key];
+                    }
+                    ctx._source.updated_at = params.updated_at;
+                `,
+                    params: {
+                        data,
+                        updated_at: new Date().toISOString()
+                    }
+                },
                 refresh: true,
             })
+            return true;
+
+
 
         } catch (error) {
             if (error.meta?.statusCode === 404) {
